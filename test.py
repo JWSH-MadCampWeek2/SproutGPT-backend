@@ -15,8 +15,6 @@ class CommaOutputParser(BaseOutputParser):
 
 load_dotenv()
 
-d
-
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 
 # chat = ChatOpenAI(
