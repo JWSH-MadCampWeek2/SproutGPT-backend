@@ -1,1 +1,0 @@
-prompt = template.format_messages(max_items = 3, question="What are the planets?")
