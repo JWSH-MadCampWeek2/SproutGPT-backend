@@ -27,7 +27,7 @@ def index():
     return render_template('index.html')
 
 
-@app.route("/oauth", data = request.get_json())
+@app.route("/oauth", methods=['POST'])
 def oauth_api():
     """
     # OAuth API [GET]
@@ -119,42 +119,42 @@ def userinfo():
     return jsonify(userinfo)
 
 
-# @app.route('/oauth/url')
-# def oauth_url_api():
-#     """
-#     Kakao OAuth URL 가져오기
-#     """
-#     return jsonify(
-#         kakao_oauth_url="https://kauth.kakao.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code" \
-#         % (CLIENT_ID, REDIRECT_URI)
-#     )
+@app.route('/oauth/url')
+def oauth_url_api():
+    """
+    Kakao OAuth URL 가져오기
+    """
+    return jsonify(
+        kakao_oauth_url="https://kauth.kakao.com/oauth/authorize?client_id=%s&redirect_uri=%s&response_type=code" \
+        % (CLIENT_ID, REDIRECT_URI)
+    )
 
 
-# @app.route("/oauth/refresh", methods=['POST'])
-# def oauth_refesh_api():
-#     """
-#     # OAuth Refresh API
-#     refresh token을 인자로 받은 후,
-#     kakao에서 access_token 및 refresh_token을 재발급.
-#     (% refresh token의 경우, 
-#     유효기간이 1달 이상일 경우 결과에서 제외됨)
-#     """
-#     refresh_token = request.get_json()['refresh_token']
-#     result = Oauth().refresh(refresh_token)
-#     return jsonify(result)
+@app.route("/oauth/refresh", methods=['POST'])
+def oauth_refesh_api():
+    """
+    # OAuth Refresh API
+    refresh token을 인자로 받은 후,
+    kakao에서 access_token 및 refresh_token을 재발급.
+    (% refresh token의 경우, 
+    유효기간이 1달 이상일 경우 결과에서 제외됨)
+    """
+    refresh_token = request.get_json()['refresh_token']
+    result = Oauth().refresh(refresh_token)
+    return jsonify(result)
 
 
-# @app.route("/oauth/userinfo", methods=['POST'])
-# def oauth_userinfo_api():
-#     """
-#     # OAuth Userinfo API
-#     kakao access token을 인자로 받은 후,
-#     kakao에서 해당 유저의 실제 Userinfo를 가져옴
-#     """
-#     access_token = request.get_json()['access_token']
-#     result = Oauth().userinfo("Bearer " + access_token)
-#     return jsonify(result)
+@app.route("/oauth/userinfo", methods=['POST'])
+def oauth_userinfo_api():
+    """
+    # OAuth Userinfo API
+    kakao access token을 인자로 받은 후,
+    kakao에서 해당 유저의 실제 Userinfo를 가져옴
+    """
+    access_token = request.get_json()['access_token']
+    result = Oauth().userinfo("Bearer " + access_token)
+    return jsonify(result)
 
 
-# if __name__ == '__main__':
-#     app.run(debug=True)
+if __name__ == '__main__':
+    app.run(debug=True)
