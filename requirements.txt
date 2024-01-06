@@ -241,3 +241,16 @@ xlrd==2.0.1
 XlsxWriter==3.1.5
 yarl==1.9.2
 zipp==3.16.2
+Flask-JWT-Extended==3.25.0
+# itsdangerous==1.1.0
+# Jinja2==2.11.2
+# MarkupSafe==1.1.1
+PyJWT==1.7.1
+# requests==2.25.1
+# six==1.15.0
+tinydb==4.3.0
+# urllib3==1.26.3
+Werkzeug==1.0.1
+# certifi==2020.12.5
+# chardet==4.0.0
+# click==7.1.2
