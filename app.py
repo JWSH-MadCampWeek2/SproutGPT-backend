@@ -90,14 +90,13 @@ def oauth_api():
 @app.route("/info", methods=['POST'])
 def update_user_info():
     data = request.get_json()
-
     user_id = data.get('user_id')
     age = data.get('age')
     gender = data.get('gender')
     height = data.get('height')
     weight = data.get('weight')
     exercise_goal = data.get('exercise_goal')
-
+    
     if not user_id:
         return jsonify({'error': 'User ID is required'}), 400
 
