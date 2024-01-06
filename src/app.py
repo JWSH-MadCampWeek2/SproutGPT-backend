@@ -15,8 +15,6 @@ REDIRECT_URI = os.environ.get("REDIRECT_URI")
 
 
 
-
-
 app = Flask(__name__)
 
 app.config["MONGO_URI"] = "mongodb+srv://sspringson:<password>@madcampweek2.kdhm8ha.mongodb.net/"
@@ -69,20 +67,6 @@ def oauth_api():
         return jsonify({'error': str(e)}), 500
     
 
-@app.route('/add', methods=['POST'])
-def add_data():
-    # Assume JSON data comes with the POST request
-    data = request.json
-    if not data:
-        return jsonify({"error": "No data provided"}), 400
-
-    try:
-        # Insert the data into the 'myCollection' collection
-        result = mongo.db.myCollection.insert_one(data)
-        # Return the ID of the inserted document
-        return jsonify({"_id": str(result.inserted_id)}), 201
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host = "143.248.219.4", port = 8080)
