@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset = "UTF-8">
+        <meta name="viewport" content = "width=device-width", initial-scale="1.0">
+        <title> Document</title>
+    </head>
+    <body>
+        <h1>HOME PAGE</h1>
+        <ul>
+            {%for c in context%}
+            <!-- <li>
+                {{c}}
+            </li> -->
+        <li>Name: {{ c.get('name', 'No Name') }}</li>
+        <li>Age: {{ c.get('age', 'No Age') }}</li>
+        <li>Location: {{ c.get('Location', 'No Location') }}</li>
+        <li>Phone: {{ c.get('phone', 'No Phone') }}</li>
+            {% endfor %}
+        </ul>
+    </body>
+</html>

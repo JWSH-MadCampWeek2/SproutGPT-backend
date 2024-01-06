@@ -1,35 +1,28 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
+from flask import Flask, jsonify, render_template, request
+from flask_pymongo import PyMongo
+from dotenv import load_dotenv
+import os
+# db 생성
+load_dotenv()
+user_id = os.getenv("USER_ID")
+user_pwd = os.getenv("USER_PWD")
+mongo = PyMongo()
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
-db = SQLAlchemy(app)
+app.config['MONGO_URI'] = f'mongodb+srv://sspringson:{user_pwd}@madcampweek2.kdhm8ha.mongodb.net/testdb?retryWrites=true&w=majority'
+
+mongo.init_app(app)
+
+testdb = mongo.db.testdb
+
+
+@app.route('/')
+def main():
+    # context = testdb.find()
+    context = list(testdb.find())
+    return render_template('index.html',context=context)
 
 
 
-class User(db.Model):
-    email = db.Column(db.String(120), primary_key=True)
-    gender = db.Column(db.String(10))
-    age = db.Column(db.Integer)
-    height = db.Column(db.Integer)
-    weight = db.Column(db.Integer)
-    exercise_goal = db.Column(db.String(120))
-
-    def __repr__(self):
-        return '<User %r>' % self.email
-    
-    def add_or_update_user(email, gender, age, height, weight, exercise_goal):
-        user = User.query.get(email)
-        if user is None:
-            user = User(email=email, gender=gender, age=age, height=height, weight=weight, exercise_goal=exercise_goal)
-            db.session.add(user)
-        else:
-            user.gender = gender
-            user.age = age
-            user.height = height
-            user.weight = weight
-            user.exercise_goal = exercise_goal
-        db.session.commit()
-    
-
-
+if __name__ == '__main__':
+    app.run(debug=True)
