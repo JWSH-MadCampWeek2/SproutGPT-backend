@@ -6,7 +6,7 @@ import os
 import requests
 from flask_pymongo import PyMongo
 from pymongo import MongoClient
-
+from src.recommendation import recommendation
 load_dotenv() 
 
 CLIENT_ID = os.environ.get("CLIENT_ID")
@@ -20,6 +20,8 @@ app = Flask(__name__)
 client = MongoClient(CLIENT)
 db = client['MadCampWeek2']
 collection_User = db['User']
+collection_Goal = db['Goal']
+collection_Exercise = db['Exercise']
 
 
 
@@ -96,7 +98,7 @@ def update_user_info():
     gender = data.get('gender')
     height = data.get('height')
     weight = data.get('weight')
-    exercise_goal = data.get('exercise_goal')
+    # exercise_goal = data.get('exercise_goal')
     
     if not user_id:
         return jsonify({'error': 'User ID is required'}), 400
@@ -108,7 +110,7 @@ def update_user_info():
             "gender": gender,
             "height": height,
             "weight": weight,
-            "exercise_goal": exercise_goal
+            # "exercise_goal": exercise_goal
         }
     }
 
@@ -120,8 +122,96 @@ def update_user_info():
 
     return jsonify({'message': 'User information updated successfully'}), 200
 
+
+
+@app.route("/goal", methods=['POST'])
+def update_goal_info():
+    try:
+        # Extracting data from POST request
+        user_id = request.json['user_id']
+        exercise_goal = request.json['exercise_goal']
+        difficulty = request.json['difficulty']
+        target = request.json['target']
+        
+        # Creating the document to insert into the database
+        goal_document = {
+            "exercise_goal": exercise_goal,
+            "difficulty": difficulty,
+            "target": target
+        }
+        
+        # Updating the document in the collection for the given user_id
+        # upsert=True will insert a new document if one does not exist
+        result = collection_Goal.update_one(
+            {"user_id": user_id},
+            {"$set": goal_document},
+            upsert=True
+        )
+        
+        # Check if a new document was inserted
+        if result.upserted_id is not None:
+            message = "New user goal created successfully"
+        else:
+            message = "User goal updated successfully"
+        
+        # Returning success message
+        return jsonify({"message": message}), 200
+    except Exception as e:
+        # Returning error message
+        return jsonify({"error": str(e)}), 500
+    
+
+@app.route("/recommend", methods=['POST'])
+def recommend():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+        
+        # Fetch user's personal information
+        user_info = collection_User.find_one({"user_id": user_id})
+        if not user_info:
+            return jsonify({'error': 'User not found'}), 404
+        
+        age = user_info.get('age')
+        gender = user_info.get('gender')
+        height = user_info.get('height')
+        weight = user_info.get('weight')
+        
+        # Fetch user's exercise goal
+        goal_info = collection_Goal.find_one({"user_id": user_id})
+        if not goal_info:
+            return jsonify({'error': 'Goal not found for user'}), 404
+        
+        exercise_goal = goal_info.get('exercise_goal')
+        
+        # Adjust the query to include both specific and mixed difficulties
+        difficulty = goal_info.get('difficulty')
+        target = goal_info.get('target')
+        exercise_cursor = collection_Exercise.find({"difficulty": {"$in": [difficulty]}, "target": target})
+        
+        # Create a list of exercise names
+        exercise_list = [exercise['name'] for exercise in exercise_cursor]
+        
+        # Call the recommendation function
+        recommended_exercises = recommendation(age, gender, height, weight, exercise_goal, exercise_list)
+        
+        # Return the recommended exercises as JSON
+        return jsonify({'recommended_exercises': recommended_exercises}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+    
 if __name__ == '__main__':
     app.run(debug=True, host = "143.248.219.4", port = 8080)
+
+
+
+
+    
 
 
 

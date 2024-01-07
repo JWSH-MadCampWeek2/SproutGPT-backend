@@ -19,8 +19,7 @@ db = client['MadCampWeek2']
 collection_Exercise = db['Exercise']
 
 
-data = {
-    "Exercises": [
+data =  [
       {
         "name": "벤치 프레스",
         "description": "바벨을 사용하여 가슴을 주로 단련하는 운동",
@@ -365,8 +364,7 @@ data = {
         "link": "https://example.com/dumbbell-deadlift"
       }
     ]
-}
 
-collection_Exercise.insert_one(data)
+collection_Exercise.insert_many(data)
 
 client.close()
