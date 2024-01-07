@@ -51,7 +51,7 @@ def oauth_api():
         token_response.raise_for_status()
         token_data = token_response.json()
         access_token = token_data.get('access_token')
-        print(8)
+
         
 
         if not access_token:
@@ -93,7 +93,7 @@ def oauth_api():
 @app.route("/info", methods=['POST'])
 def update_user_info():
     data = request.get_json()
-    user_id = (int)(data.get('user_id'))
+    user_id = (data.get('user_id'))
     age = data.get('age')
     gender = data.get('gender')
     height = data.get('height')
@@ -165,7 +165,7 @@ def update_goal_info():
 def recommend():
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
+        user_id = (data.get('user_id'))
         
         if not user_id:
             return jsonify({'error': 'User ID is required'}), 400
@@ -197,9 +197,7 @@ def recommend():
         
         # Call the recommendation function
         recommended_exercises = recommendation(age, gender, height, weight, exercise_goal, exercise_list)
-        
-        # Return the recommended exercises as JSON
-        return jsonify({'recommended_exercises': recommended_exercises}), 200
+        return jsonify({"a": recommended_exercises}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500

@@ -2,7 +2,7 @@
 
 from dotenv import load_dotenv
 from langchain.chat_models import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.callbacks import StreamingStdOutCallbackHandler
 from langchain.schema import BaseOutputParser
 import os
@@ -17,31 +17,9 @@ load_dotenv()
 
 openai_api_key = os.environ.get("OPENAI_API_KEY")
 
-# age = 20
-# gender = "man"
-# height = 173
-# weight = 73
-# exercise_goal = "체중 감량"
-
-
-# excercise_list = [
-#     "덤벨 컬",
-#     "크런치",
-#     "플랭크",
-#     "카프 레이즈",
-#     "바벨 컬",
-#     "바이시클 크런치",
-#     "푸시업",
-#     "덤벨 사이드 레이즈",
-#     "월 시트",
-#     "체어 딥스"
-# ]
-
-# exercise_string = ", ".join(excercise_list)
 
 chat = ChatOpenAI(
     temperature=0.1,
-    model="gpt-4-0613",
 )
 # template = ChatPromptTemplate.from_messages(
 #     [
@@ -56,6 +34,8 @@ chat = ChatOpenAI(
 # prompt = template.format_messages(age=age,gender=gender,height=height,weight=weight,exercise_goal=exercise_goal,exercise_list=exercise_string)
 
 def recommendation(age, gender, height, weight, exercise_goal, exercise_list):
+
+    
     exercise_string = ", ".join(exercise_list)
 
     # Prepare the chat prompt template
@@ -63,17 +43,23 @@ def recommendation(age, gender, height, weight, exercise_goal, exercise_list):
         [
             (
                 "system",
-                "You are an exercise recommendation machine. Based on the user's age, gender, height, weight, and exercise goal, select 4 suitable exercises from the list provided by the user. Output the exercises in the following format: [First Exercise, Second Exercise, Third Exercise, Fourth Exercise]."
+                "You are an exercise recommendation machine. Based on the user's age, gender, height, weight, and exercise goal, select 4 suitable exercises from the list provided by the user. Everything you are asked will be answered with a comma separated list of max 4 in lowercase. Do NOT reply with anything else."
             ),
-            ("human", f"I am a {age} year old {gender}. My height is {height} cm, and my weight is {weight} kg. My exercise goal is {exercise_goal}. The exercises I am interested in are {exercise_string}. Please recommend four exercises that suit me.")
+            ("human","I am a {age} year old {gender}. My height is {height} cm, and my weight is {weight} kg. My exercise goal is {exercise_goal}. The exercises I am interested in are {exercise_string}. Please recommend four exercises that suit me.")
         ]
     )
 
-    # Format the chat prompt
-    prompt = template.format_messages()
-    response = chat.predict_messages(prompt)
+    # # Format the chat prompt
+    # prompt = template.format_messages()
+    # response = chat.predict_messages(prompt)
+    # parser = CommaOutputParser()
 
-    # Parse the response to get the list of exercises
-    parser = CommaOutputParser()
-    recommended_exercises = parser.parse(response)
-    return recommended_exercises
+    # # Use the parse method of the CommaOutputParser
+    # recommended_exercises = parser.parse(response)
+    # # Parse the response to get the list of exercises
+    # # parser = CommaOutputParser()
+    # # recommended_exercises = parser.parse(response)
+    chain = template |chat | CommaOutputParser()
+    list = chain.invoke({"age":age,"gender":gender,"height":height,"weight":weight,"exercise_goal":exercise_goal,"exercise_string":exercise_string})
+    print(list)
+    return list
