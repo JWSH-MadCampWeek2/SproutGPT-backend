@@ -32,6 +32,6 @@ template = ChatPromptTemplate.from_messages(
     ]
 )
 
-prompt = template.format_messages(age="20",gender="woman",height="170cm",weight="60",exercise_goal="체력 강화",부위 = "복근")
+prompt = template.format_messages(age="70",gender="woman",height="170cm",weight="60",exercise_goal="몸매 유지",부위 = "복근")
 
 print(chat.predict_messages(prompt))

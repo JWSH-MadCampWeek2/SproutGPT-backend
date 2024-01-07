@@ -7,17 +7,17 @@ import requests
 from flask_pymongo import PyMongo
 from pymongo import MongoClient
 
+load_dotenv() 
+
 CLIENT_ID = os.environ.get("CLIENT_ID")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET")
 REDIRECT_URI = os.environ.get("REDIRECT_URI")
 CLIENT = os.environ.get("CLIENT")
 
 
-
-
 app = Flask(__name__)
 
-client = MongoClient("CLIENT")
+client = MongoClient(CLIENT)
 db = client['MadCampWeek2']
 collection_User = db['User']
 
@@ -33,7 +33,6 @@ def oauth_api():
 
     if not authorization_code:
         return jsonify({'error': 'Authorization code is required'}), 400
-
     token_url = 'https://kauth.kakao.com/oauth/token'
 
     payload = {
@@ -44,12 +43,14 @@ def oauth_api():
     }
     if CLIENT_SECRET:
         payload['client_secret'] = CLIENT_SECRET
-
     try:
-        token_response = requests.post(token_url, data=payload) # 이걸로 요청하는듯
+        token_response = requests.post(token_url, data=payload)
+        print(token_response.text) # 이걸로 요청하는듯
         token_response.raise_for_status()
         token_data = token_response.json()
         access_token = token_data.get('access_token')
+        print(8)
+        
 
         if not access_token:
             return jsonify({'error': 'Access token not found'}), 400
@@ -90,7 +91,7 @@ def oauth_api():
 @app.route("/info", methods=['POST'])
 def update_user_info():
     data = request.get_json()
-    user_id = data.get('user_id')
+    user_id = (int)(data.get('user_id'))
     age = data.get('age')
     gender = data.get('gender')
     height = data.get('height')
