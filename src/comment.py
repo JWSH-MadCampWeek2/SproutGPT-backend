@@ -45,7 +45,7 @@ def comment(age, gender, height, weight, exercise_goal, exercise_list, recommend
 
     chat_ = ChatOpenAI(
     temperature=0.1,
-    model="gpt-4",
+    # model="gpt-4",
 )
     try:
         exercise_string = ", ".join(exercise_list)

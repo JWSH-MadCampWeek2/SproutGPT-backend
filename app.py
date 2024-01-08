@@ -25,6 +25,9 @@ collection_Goal = db['Goal']
 collection_Exercise = db['Exercise']
 collection_Grass = db['Grass']
 collection_Rank = db['Rank']
+collection_Score = db['Score']
+
+
 
 
 
@@ -153,7 +156,7 @@ def update_user_info():
 def update_goal_info():
     try:
         # Extracting data from POST request
-        user_id = request.json['user_id']
+        user_id = (str)(request.json['user_id'])
         exercise_goal = request.json['exercise_goal']
         difficulty = request.json['difficulty']
         target = request.json['target']
@@ -230,12 +233,10 @@ def recommend():
         
         # Call the recommendation function to get a list of recommended exercise names
         recommended_exercise_names = recommendation(age, gender, height, weight, exercise_goal, exercise_names)
-        print("안")
-        comment_response = comment(age, gender, height, weight, exercise_goal, exercise_names,recommended_exercise_names)
-        if isinstance(comment_response, dict) and "error" in comment_response:
-            return jsonify(comment_response), 500
-        print("녕")
-        print(comment_response)
+        # comment_response = comment(age, gender, height, weight, exercise_goal, exercise_names,recommended_exercise_names)
+        # if isinstance(comment_response, dict) and "error" in comment_response:
+        #     return jsonify(comment_response), 500
+        # print(comment_response)
         # Fetch full details for the recommended exercises
         recommended_exercises_info = []
         for name in recommended_exercise_names:
@@ -247,58 +248,123 @@ def recommend():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-    
 @app.route("/record", methods=['POST'])
 def record_exercise_session():
     try:
         data = request.get_json()
-        user_id = data.get('user_id')
-        exercise_date = data.get('date')  # Format: "YYYY-MM-DD"
-        duration = data.get('duration')
-        exercises = data.get('exercises')  # Assuming this is a list
+        user_id = data['user_id']
+        date = data['date']  # Expecting format "YYYY-MM-DD"
+        duration = data['duration']
+        exercises = data['exercises']  # Expecting a list
 
-        if not user_id or not exercise_date or duration is None:
+        if not (user_id and date and duration and exercises):
             return jsonify({'error': 'Missing required fields'}), 400
 
-        # Parse the date to extract year and month
-        year_month = exercise_date[:7]  # "YYYY-MM"
+        # Parse the date to extract year, month, and day
+        year, month, day = date.split('-')  # "YYYY", "MM", "DD"
 
-        # Find the user's record
-        user_record = collection_Grass.find_one({"user_id": user_id})
+        # Find the document for the user and year-month
+        user_record = collection_Grass.find_one(
+            {"user_id": user_id, f"calendar.{year}-{month}": {"$exists": True}}
+        )
 
-        if not user_record:
-            # Create a new record for a new user
-            new_record = {
-                "user_id": user_id,
-                "exercise_sessions": {
-                    year_month: {
-                        "exercise_sessions": [
-                            {"date": exercise_date, "duration": duration}
-                        ],
-                        "score": duration  # Initial score is the duration
-                    }
-                }
-            }
-            collection_Grass.insert_one(new_record)
-        else:
-            # Update the existing record
-            monthly_record = user_record.get("exercise_sessions", {}).get(year_month)
-
-            if monthly_record:
-                # Update the existing monthly record
-                monthly_record["exercise_sessions"].append({"date": exercise_date, "duration": duration})
-                monthly_record["score"] += duration  # Update the score
+        if user_record:
+            # Check if the day already exists in exercise_sessions
+            day_exists = any(
+                session['day'] == day for session in user_record['calendar'][f'{year}-{month}']['exercise_sessions']
+            )
+            
+            if day_exists:
+                # Update the existing day's duration and exercises
+                collection_Grass.update_one(
+                    {"user_id": user_id, f"calendar.{year}-{month}.exercise_sessions.day": day},
+                    {"$set": {
+                        f"calendar.{year}-{month}.exercise_sessions.$.duration": duration,
+                        f"calendar.{year}-{month}.exercise_sessions.$.exercises": exercises
+                    }}
+                )
             else:
-                # Create a new monthly record
-                user_record["exercise_sessions"][year_month] = {
-                    "exercise_sessions": [{"date": exercise_date, "duration": duration}],
-                    "score": duration
-                }
+                # Append a new session for the day
+                collection_Grass.update_one(
+                    {"user_id": user_id},
+                    {"$push": {
+                        f"calendar.{year}-{month}.exercise_sessions": {"day": day, "duration": duration, "exercises": exercises}
+                    }}
+                )
+            message = "Exercise session updated or added successfully"
+        else:
+            # If the year-month does not exist, create it and add the session
+            collection_Grass.update_one(
+                {"user_id": user_id},
+                {"$set": {
+                    f"calendar.{year}-{month}": {
+                        "exercise_sessions": [{"day": day, "duration": duration, "exercises": exercises}]
+                    }
+                }},
+                upsert=True
+            )
+            message = "New month created and exercise session added successfully"
 
-            # Update the user's record in the database
-            collection_Grass.update_one({"user_id": user_id}, {"$set": user_record})
+        return jsonify({'message': message}), 200
 
-        return jsonify({'message': 'Exercise session recorded successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    3
+@app.route("/score", methods=['POST'])
+def calculate_score():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        year_month = data.get('date')  # Expecting format "YYYY-MM"
+
+        if not user_id or not year_month:
+            return jsonify({'error': 'User ID and date are required'}), 400
+
+        # Retrieve the exercise sessions for the user and month
+        user_record = collection_Grass.find_one(
+            {"user_id": user_id},
+            {"calendar": {"$elemMatch": {"date": year_month}}}
+        )
+
+        if not user_record or 'calendar' not in user_record or not user_record['calendar']:
+            return jsonify({'error': 'No exercise sessions found'}), 404
+
+        # The calendar with the matching date is in the first position of the array due to $elemMatch
+        exercise_sessions = user_record['calendar'][0]['exercise_sessions']
+        total_duration = sum(int(session['duration']) for session in exercise_sessions)
+        score = total_duration * 3  # Base score
+
+        # Check for consecutive days and apply multiplier
+        consecutive_days = 1
+        for i in range(1, len(exercise_sessions)):
+            current_day = int(exercise_sessions[i]['day'])
+            previous_day = int(exercise_sessions[i - 1]['day'])
+            if current_day == previous_day + 1:
+                consecutive_days += 1
+            else:
+                score += (consecutive_days - 1) * total_duration * 3
+                consecutive_days = 1  # Reset counter for new block
+        score += (consecutive_days - 1) * total_duration * 3  # Apply multiplier for the last block if any
+
+        # Update or add the score in collection_Score
+        score_record = collection_Score.find_one({"user_id": user_id})
+        if score_record:
+            # If the score record exists, update or add the new score in the calendar
+            updated = False
+            for entry in score_record['calendar']:
+                if entry['date'] == year_month:
+                    entry['score'] = score
+                    updated = True
+                    break
+            if not updated:
+                # If the date was not in the calendar, append it
+                score_record['calendar'].append({"date": year_month, "score": score})
+            collection_Score.update_one({"_id": score_record['_id']}, {"$set": {"calendar": score_record['calendar']}})
+        else:
+            # If there's no score record for the user, create it
+            collection_Score.insert_one({"user_id": user_id, "calendar": [{"date": year_month, "score": score}]})
+
+        return jsonify({'message': 'Score calculated and saved successfully', 'score': score}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -316,35 +382,75 @@ def get_exercise_sessions():
             return jsonify({'error': 'User ID, year, and month are required'}), 400
 
         # Prepare the query to match the date format
-        date_query = f"{year:04d}-{month:02d}"
+        year_month = f"{year}-{month}"
 
-        # Fetch the exercise sessions for the given user_id and date range
-        user_record = collection_Grass.find_one({"user_id": user_id})
-        
-        if not user_record:
-            return jsonify({'error': 'No record found for the given user_id'}), 404
+        # Fetch the exercise sessions for the given user_id and year_month
+        user_record = collection_Grass.find_one(
+            {"user_id": user_id, f"calendar.{year_month}": {"$exists": True}},
+            {f"calendar.{year_month}.exercise_sessions": 1, "_id": 0}
+        )
 
-        # Filter sessions that match the given year and month
-        matched_sessions = [
-            session for session in user_record.get('exercise_sessions', [])
-            if session['date'].startswith(date_query)
-        ]
+        # Check if the user_record exists and has the specified year_month
+        if user_record and year_month in user_record.get('calendar', {}):
+            # Extract the exercise_sessions for the specified year_month
+            exercise_sessions = user_record['calendar'][year_month]['exercise_sessions']
+        else:
+            # Return an empty list if no sessions are found
+            exercise_sessions = []
 
-        # Return the matched exercise sessions as JSON
-        return jsonify(matched_sessions), 200
+        # Return the exercise sessions as JSON
+        return jsonify({'exercise_sessions': exercise_sessions}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
     
 
+@app.route("/rank", methods=['POST'])
+def get_rankings():
+    try:
+        data = request.get_json()
+        year = data.get('year')
+        month = data.get('month')
 
+        # Validate incoming data
+        if year is None or month is None:
+            return jsonify({'error': 'Year and month are required'}), 400
+
+        # Prepare the query to match the date format
+        date_query = f"{year:04d}-{month:02d}"
+
+        # Fetch all user records for the given date range
+        all_records = collection_Grass.find({})
+
+        # Prepare a dictionary to hold user scores
+        user_scores = {}
+
+        # Iterate over the records to calculate scores
+        for record in all_records:
+            user_id = record.get('user_id')
+            # Initialize the user's score
+            user_scores[user_id] = 0
+            # Aggregate scores if the user has sessions for the given month and year
+            for session in record.get('exercise_sessions', []):
+                if session['date'].startswith(date_query):
+                    user_scores[user_id] += session.get('score', 0)
+
+        # Sort the user_scores dictionary by score in descending order
+        sorted_scores = dict(sorted(user_scores.items(), key=lambda item: item[1], reverse=True))
+        print(sorted_scores)
+
+        # Return the sorted scores as JSON
+        return jsonify(sorted_scores), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 if __name__ == '__main__': 
-    app.run(debug=True, host = "13.209.98.220", port = 8080)
+    app.run(debug=True, host = "143.248.219.4", port = 8080)
 
 
-# aws : 143.248.219.4
+# local : 143.248.219.4
 # ec2 : 13.209.98.220
     
 
