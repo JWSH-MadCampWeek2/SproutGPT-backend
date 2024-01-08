@@ -22,6 +22,7 @@ db = client['MadCampWeek2']
 collection_User = db['User']
 collection_Goal = db['Goal']
 collection_Exercise = db['Exercise']
+collection_Grass = db['Grass']
 
 
 
@@ -193,17 +194,101 @@ def recommend():
         exercise_cursor = collection_Exercise.find({"difficulty": {"$in": [difficulty]}, "target": target})
         
         # Create a list of exercise names
-        exercise_list = [exercise['name'] for exercise in exercise_cursor]
+        exercise_names = [exercise['name'] for exercise in exercise_cursor]
         
-        # Call the recommendation function
-        recommended_exercises = recommendation(age, gender, height, weight, exercise_goal, exercise_list)
-        return jsonify({"a": recommended_exercises}), 200
+        # Call the recommendation function to get a list of recommended exercise names
+        recommended_exercise_names = recommendation(age, gender, height, weight, exercise_goal, exercise_names)
+        
+        # Fetch full details for the recommended exercises
+        recommended_exercises_info = []
+        for name in recommended_exercise_names:
+            exercise_details = collection_Exercise.find_one({"name": name})
+            if exercise_details:
+                # Omit the MongoDB '_id' from the JSON response
+                exercise_details.pop('_id', None)
+                recommended_exercises_info.append(exercise_details)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route("/record", methods=['POST'])
+def record_exercise_session():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+
+        # Validate incoming data
+        if not user_id:
+            return jsonify({'error': 'User ID is required'}), 400
+
+        # Extract session data
+        date = data.get('date')
+        duration = data.get('duration')
+        exercises = data.get('exercises')
+
+        # Prepare session document
+        new_session = {
+            "date": date,
+            "duration": duration,
+            "exercises": exercises
+        }
+
+        # Check if the user_id exists in collection_Grass
+        record = collection_Grass.find_one({"user_id": user_id})
+        if record:
+            # User exists, update the record with new session
+            collection_Grass.update_one(
+                {"user_id": user_id},
+                {"$push": {"exercise_sessions": new_session}}
+            )
+        else:
+            # User_id does not exist, create new record
+            collection_Grass.insert_one({
+                "user_id": user_id,
+                "exercise_sessions": [new_session]
+            })
+
+        return jsonify({'message': 'Exercise session recorded successfully'}), 200
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+@app.route("/grass", methods=['POST'])
+def get_exercise_sessions():
+    try:
+        data = request.get_json()
+        user_id = data.get('user_id')
+        year = data.get('year')
+        month = data.get('month')
+
+        # Validate incoming data
+        if not user_id or year is None or month is None:
+            return jsonify({'error': 'User ID, year, and month are required'}), 400
+
+        # Prepare the query to match the date format
+        date_query = f"{year:04d}-{month:02d}"
+
+        # Fetch the exercise sessions for the given user_id and date range
+        user_record = collection_Grass.find_one({"user_id": user_id})
+        
+        if not user_record:
+            return jsonify({'error': 'No record found for the given user_id'}), 404
+
+        # Filter sessions that match the given year and month
+        matched_sessions = [
+            session for session in user_record.get('exercise_sessions', [])
+            if session['date'].startswith(date_query)
+        ]
+
+        # Return the matched exercise sessions as JSON
+        return jsonify(matched_sessions), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-    
-if __name__ == '__main__':
+
+
+if __name__ == '__main__': 
     app.run(debug=True, host = "143.248.219.4", port = 8080)
 
 
