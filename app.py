@@ -214,8 +214,16 @@ def recommend():
         
         # Adjust the query to include both specific and mixed difficulties
         difficulty = goal_info.get('difficulty')
-        target = goal_info.get('target')
-        exercise_cursor = collection_Exercise.find({"difficulty": {"$in": [difficulty]}, "target": target})
+        targets = goal_info.get('target')
+        difficulty_query = {"difficulty": {"$in": [difficulty, [difficulty]]}}
+        
+        # Prepare the query for targets
+        target_query = {"target": {"$in": targets}}
+        
+        # Combine both queries with an AND condition
+        combined_query = {"$and": [difficulty_query, target_query]}
+        
+        exercise_cursor = collection_Exercise.find(combined_query)
         
         # Create a list of exercise names
         exercise_names = [exercise['name'] for exercise in exercise_cursor]
@@ -226,11 +234,11 @@ def recommend():
         # Fetch full details for the recommended exercises
         recommended_exercises_info = []
         for name in recommended_exercise_names:
-            exercise_details = collection_Exercise.find_one({"name": name})
-            if exercise_details:
-                # Omit the MongoDB '_id' from the JSON response
-                exercise_details.pop('_id', None)
-                recommended_exercises_info.append(exercise_details)
+            exercise_detail = collection_Exercise.find_one({"name": name}, {'_id': False})
+            if exercise_detail:
+                recommended_exercises_info.append(exercise_detail)
+
+        return jsonify({'recommended_exercises': recommended_exercises_info}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
