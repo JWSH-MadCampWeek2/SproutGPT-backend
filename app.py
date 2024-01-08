@@ -23,6 +23,7 @@ collection_User = db['User']
 collection_Goal = db['Goal']
 collection_Exercise = db['Exercise']
 collection_Grass = db['Grass']
+collection_Rank = db['Rank']
 
 
 
@@ -48,7 +49,7 @@ def oauth_api():
         payload['client_secret'] = CLIENT_SECRET
     try:
         token_response = requests.post(token_url, data=payload)
-        print(token_response.text) # 이걸로 요청하는듯
+        # print(token_response.text) # 이걸로 요청하는듯
         token_response.raise_for_status()
         token_data = token_response.json()
         access_token = token_data.get('access_token')
@@ -67,25 +68,48 @@ def oauth_api():
         user_response.raise_for_status()
         user_info = user_response.json()
 
-        existing_user = collection_User.find_one({"user_id": user_info.get('id')})
+        user_id_str = str(user_info.get('id'))
+
+        existing_user = collection_User.find_one({"user_id": user_id_str})
         if existing_user:
-            return jsonify({'message': 'User already exists'}), 200
+            # Fetch the user's goal data from collection_Goal
+            user_goals = collection_Goal.find_one({"user_id": user_id_str})
+            if user_goals:
+                # Remove the '_id' field from the user_goals if it exists
+                user_goals.pop('_id', None)
 
-        user_id = user_info.get('id')
-        user_nickname = user_info['kakao_account']['profile']['nickname']
-        user_profile_image = user_info['kakao_account']['profile']['profile_image_url']
+            # Extract nickname and profile_image from existing_user
+            nickname = existing_user.get('nickname')
+            profile_image = existing_user.get('profile_image')
 
-        # Prepare the document to insert into MongoDB
-        user_document = {
-            "user_id": user_id,
-            "nickname": user_nickname,
-            "profile_image": user_profile_image
-        }
+            # Construct the user_data response
+            user_data = {
+                "exist": "yes",
+                "goals": user_goals,
+                "nickname": nickname,
+                "profile_image": profile_image,
+                "user_id": user_id_str
+            }
 
-        # Step 4: Insert User Information into MongoDB
-        result = collection_User.insert_one(user_document)
-        # Step 4: Return User Information
-        return jsonify(user_info)
+            # 결합된 데이터를 JSON 형태로 반환합니다.
+            return jsonify(user_data), 200
+        else :
+    
+            user_nickname = user_info['kakao_account']['profile']['nickname']
+            user_profile_image = user_info['kakao_account']['profile']['profile_image_url']
+
+            # Prepare the document to insert into MongoDB
+            new_user_document = {
+                "user_id": user_id_str,
+                "nickname": user_nickname,
+                "profile_image": user_profile_image
+            }
+            
+            # Step 4: Insert User Information into MongoDB
+            collection_User.insert_one(new_user_document)
+            new_user_document.pop('_id', None)
+            # Step 4: Return User Information
+            return jsonify(new_user_document) , 200
     
 
     except requests.exceptions.RequestException as e:
@@ -216,37 +240,50 @@ def record_exercise_session():
     try:
         data = request.get_json()
         user_id = data.get('user_id')
-
-        # Validate incoming data
-        if not user_id:
-            return jsonify({'error': 'User ID is required'}), 400
-
-        # Extract session data
-        date = data.get('date')
+        exercise_date = data.get('date')  # Format: "YYYY-MM-DD"
         duration = data.get('duration')
-        exercises = data.get('exercises')
+        exercises = data.get('exercises')  # Assuming this is a list
 
-        # Prepare session document
-        new_session = {
-            "date": date,
-            "duration": duration,
-            "exercises": exercises
-        }
+        if not user_id or not exercise_date or duration is None:
+            return jsonify({'error': 'Missing required fields'}), 400
 
-        # Check if the user_id exists in collection_Grass
-        record = collection_Grass.find_one({"user_id": user_id})
-        if record:
-            # User exists, update the record with new session
-            collection_Grass.update_one(
-                {"user_id": user_id},
-                {"$push": {"exercise_sessions": new_session}}
-            )
-        else:
-            # User_id does not exist, create new record
-            collection_Grass.insert_one({
+        # Parse the date to extract year and month
+        year_month = exercise_date[:7]  # "YYYY-MM"
+
+        # Find the user's record
+        user_record = collection_Grass.find_one({"user_id": user_id})
+
+        if not user_record:
+            # Create a new record for a new user
+            new_record = {
                 "user_id": user_id,
-                "exercise_sessions": [new_session]
-            })
+                "exercise_sessions": {
+                    year_month: {
+                        "exercise_sessions": [
+                            {"date": exercise_date, "duration": duration}
+                        ],
+                        "score": duration  # Initial score is the duration
+                    }
+                }
+            }
+            collection_Grass.insert_one(new_record)
+        else:
+            # Update the existing record
+            monthly_record = user_record.get("exercise_sessions", {}).get(year_month)
+
+            if monthly_record:
+                # Update the existing monthly record
+                monthly_record["exercise_sessions"].append({"date": exercise_date, "duration": duration})
+                monthly_record["score"] += duration  # Update the score
+            else:
+                # Create a new monthly record
+                user_record["exercise_sessions"][year_month] = {
+                    "exercise_sessions": [{"date": exercise_date, "duration": duration}],
+                    "score": duration
+                }
+
+            # Update the user's record in the database
+            collection_Grass.update_one({"user_id": user_id}, {"$set": user_record})
 
         return jsonify({'message': 'Exercise session recorded successfully'}), 200
 
@@ -285,6 +322,8 @@ def get_exercise_sessions():
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+    
+
 
 
 
