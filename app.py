@@ -7,6 +7,7 @@ import requests
 from flask_pymongo import PyMongo
 from pymongo import MongoClient
 from src.recommendation import recommendation
+from src.comment import comment
 load_dotenv() 
 
 CLIENT_ID = os.environ.get("CLIENT_ID")
@@ -49,7 +50,6 @@ def oauth_api():
         payload['client_secret'] = CLIENT_SECRET
     try:
         token_response = requests.post(token_url, data=payload)
-        # print(token_response.text) # 이걸로 요청하는듯
         token_response.raise_for_status()
         token_data = token_response.json()
         access_token = token_data.get('access_token')
@@ -230,7 +230,12 @@ def recommend():
         
         # Call the recommendation function to get a list of recommended exercise names
         recommended_exercise_names = recommendation(age, gender, height, weight, exercise_goal, exercise_names)
-        
+        print("안")
+        comment_response = comment(age, gender, height, weight, exercise_goal, exercise_names,recommended_exercise_names)
+        if isinstance(comment_response, dict) and "error" in comment_response:
+            return jsonify(comment_response), 500
+        print("녕")
+        print(comment_response)
         # Fetch full details for the recommended exercises
         recommended_exercises_info = []
         for name in recommended_exercise_names:

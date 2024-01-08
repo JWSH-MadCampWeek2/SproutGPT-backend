@@ -1,6 +1,7 @@
 
 
 from dotenv import load_dotenv
+from flask import jsonify
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import ChatPromptTemplate, PromptTemplate
 from langchain.callbacks import StreamingStdOutCallbackHandler
@@ -35,31 +36,33 @@ chat = ChatOpenAI(
 
 def recommendation(age, gender, height, weight, exercise_goal, exercise_list):
 
-    
-    exercise_string = ", ".join(exercise_list)
+    try:
+        exercise_string = ", ".join(exercise_list)
 
-    # Prepare the chat prompt template
-    template = ChatPromptTemplate.from_messages(
-        [
-            (
-                "system",
-                "You are an exercise recommendation machine. Based on the user's age, gender, height, weight, and exercise goal, select 4 suitable exercises from the list provided by the user. Everything you are asked will be answered with a comma separated list of max 4 in lowercase. Do NOT reply with anything else."
-            ),
-            ("human","I am a {age} year old {gender}. My height is {height} cm, and my weight is {weight} kg. My exercise goal is {exercise_goal}. The exercises I am interested in are {exercise_string}. Please recommend four exercises that suit me.")
-        ]
-    )
+        # Prepare the chat prompt template
+        template = ChatPromptTemplate.from_messages(
+            [
+                (
+                    "system",
+                    "You are an exercise recommendation machine. Based on the user's age, gender, height, weight, and exercise goal, select 4 suitable exercises from the list provided by the user. Everything you are asked will be answered with a comma separated list of max 4 in lowercase. Do NOT reply with anything else."
+                ),
+                ("human","I am a {age} year old {gender}. My height is {height} cm, and my weight is {weight} kg. My exercise goal is {exercise_goal}. The exercises I am interested in are {exercise_string}. Please recommend four exercises that suit me.")
+            ]
+        )
 
-    # # Format the chat prompt
-    # prompt = template.format_messages()
-    # response = chat.predict_messages(prompt)
-    # parser = CommaOutputParser()
+        # # Format the chat prompt
+        # prompt = template.format_messages()
+        # response = chat.predict_messages(prompt)
+        # parser = CommaOutputParser()
 
-    # # Use the parse method of the CommaOutputParser
-    # recommended_exercises = parser.parse(response)
-    # # Parse the response to get the list of exercises
-    # # parser = CommaOutputParser()
-    # # recommended_exercises = parser.parse(response)
-    chain = template |chat | CommaOutputParser()
-    list = chain.invoke({"age":age,"gender":gender,"height":height,"weight":weight,"exercise_goal":exercise_goal,"exercise_string":exercise_string})
-    print(list)
-    return list
+        # # Use the parse method of the CommaOutputParser
+        # recommended_exercises = parser.parse(response)
+        # # Parse the response to get the list of exercises
+        # # parser = CommaOutputParser()
+        # # recommended_exercises = parser.parse(response)
+        chain = template |chat | CommaOutputParser()
+        list = chain.invoke({"age":age,"gender":gender,"height":height,"weight":weight,"exercise_goal":exercise_goal,"exercise_string":exercise_string})
+        print(list)
+        return list
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
