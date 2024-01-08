@@ -341,11 +341,11 @@ def get_exercise_sessions():
 
 
 if __name__ == '__main__': 
-    app.run(debug=True, host = "143.248.219.4", port = 8080)
+    app.run(debug=True, host = "13.209.98.220", port = 8080)
 
 
-
-
+# aws : 143.248.219.4
+# ec2 : 13.209.98.220
     
 
 
