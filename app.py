@@ -1,4 +1,5 @@
 
+import json
 from flask import Flask, render_template, request, jsonify, make_response
 from flask_cors import CORS
 from dotenv import load_dotenv
@@ -153,7 +154,46 @@ def update_user_info():
 
 
 
-
+@app.route("/goal", methods=['POST'])
+def update_goal_info():
+    try:
+        # Extracting data from POST request
+        print(1)
+        user_id = (request.json['user_id'])
+        print(2)
+        exercise_goal = request.json['exercise_goal']
+        print(3)
+        difficulty = request.json['difficulty']
+        print(4)
+        target = request.json['target']
+        print(5)
+        
+        # Creating the document to insert into the database
+        goal_document = {
+            "exercise_goal": exercise_goal,
+            "difficulty": difficulty,
+            "target": target
+        }
+        
+        # Updating the document in the collection for the given user_id
+        # upsert=True will insert a new document if one does not exist
+        result = collection_Goal.update_one(
+            {"user_id": user_id},
+            {"$set": goal_document},
+            upsert=True
+        )
+        
+        # Check if a new document was inserted
+        if result.upserted_id is not None:
+            message = "New user goal created successfully"
+        else:
+            message = "User goal updated successfully"
+        
+        # Returning success message
+        return jsonify({"message": message}), 200
+    except Exception as e:
+        # Returning error message
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/recommend", methods=['POST'])
 def recommend():
@@ -202,7 +242,7 @@ def recommend():
         comment_response = str(comment(age, gender, height, weight, exercise_goal, exercise_names,recommended_exercise_names))
         if isinstance(comment_response, dict) and "error" in comment_response:
             return jsonify(comment_response), 500
-
+        
         # Fetch full details for the recommended exercises
         recommended_exercises_info = []
         for name in recommended_exercise_names:
@@ -212,6 +252,7 @@ def recommend():
 
 
         print(comment_response)
+        print(recommended_exercises_info)
 
         # Include comment response in the final JSON response
         return jsonify({'recommended_exercises': recommended_exercises_info, 'comment': comment_response}), 200
@@ -225,7 +266,7 @@ def record_exercise_session():
         user_id = data['user_id']
         date = data['date']  # Expecting format "YYYY-MM-DD"
         duration = data['duration']
-        exercises = data['exercises']  # Expecting a list
+        exercises = json.loads(data['exercises'])  # Expecting a list
 
         if not (user_id and date and duration and exercises):
             return jsonify({'error': 'Missing required fields'}), 400
