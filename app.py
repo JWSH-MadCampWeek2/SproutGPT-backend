@@ -233,10 +233,10 @@ def recommend():
         
         # Call the recommendation function to get a list of recommended exercise names
         recommended_exercise_names = recommendation(age, gender, height, weight, exercise_goal, exercise_names)
-        # comment_response = comment(age, gender, height, weight, exercise_goal, exercise_names,recommended_exercise_names)
-        # if isinstance(comment_response, dict) and "error" in comment_response:
-        #     return jsonify(comment_response), 500
-        # print(comment_response)
+        comment_response = str(comment(age, gender, height, weight, exercise_goal, exercise_names,recommended_exercise_names))
+        if isinstance(comment_response, dict) and "error" in comment_response:
+            return jsonify(comment_response), 500
+
         # Fetch full details for the recommended exercises
         recommended_exercises_info = []
         for name in recommended_exercise_names:
@@ -244,7 +244,11 @@ def recommend():
             if exercise_detail:
                 recommended_exercises_info.append(exercise_detail)
 
-        return jsonify({'recommended_exercises': recommended_exercises_info}), 200
+
+        print(comment_response)
+
+        # Include comment response in the final JSON response
+        return jsonify({'recommended_exercises': recommended_exercises_info, 'comment': comment_response}), 200
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -403,41 +407,65 @@ def get_exercise_sessions():
 def get_rankings():
     try:
         data = request.get_json()
+        app.logger.info(data)  # Using app.logger instead of print
         year = data.get('year')
         month = data.get('month')
+        app.logger.info(f"Year: {year}, Month: {month}")
 
         # Validate incoming data
         if year is None or month is None:
             return jsonify({'error': 'Year and month are required'}), 400
 
         # Prepare the date query to match the required format "YYYY-MM"
-        date_query = f"{year}-{month:02d}"  # Ensure month is two digits
+        date_query = f"{year}-{str(month).zfill(2)}"
+        app.logger.info(f"Date Query: {date_query}")
 
-        # Fetch all user score records for the given date range from collection_Score
-        all_score_records = collection_Score.find({})
+        # Fetch only user score records for the given date from collection_Score
+        all_score_records = list(collection_Score.find(
+            {"calendar": {"$elemMatch": {"date": date_query}}}
+        ))
+        app.logger.info(f"All Score Records: {all_score_records}")
 
-        # Prepare a list to hold user scores along with user_id
         user_scores = []
 
         # Iterate over the score records to find the score for the given month and year
         for record in all_score_records:
             user_id = record.get('user_id')
-            # Find the score for the specified month and year
+            # Extract the score for the specified month and year from the calendar
             for calendar_entry in record.get('calendar', []):
                 if calendar_entry.get('date') == date_query:
                     user_scores.append({
                         'user_id': user_id,
                         'score': calendar_entry.get('score', 0)
                     })
-                    break
+                    break  # No need to search further in the calendar
 
         # Sort the user scores list by score in descending order
         sorted_scores = sorted(user_scores, key=lambda k: k['score'], reverse=True)
 
         # Return the sorted scores as JSON
-        return jsonify(sorted_scores), 200
+        final_results = []
+
+        # For each user score, find the user details from collection_User
+        for user_score in sorted_scores:
+            user_details = collection_User.find_one({'user_id': user_score['user_id']})
+            if user_details:
+                # Append the user details to the final results
+                final_results.append({
+                    'user_id': user_score['user_id'],
+                    'score': user_score['score'],
+                    'nickname': user_details.get('nickname', 'N/A'),  # Default if no nickname
+                    'profile_image': user_details.get('profile_image', 'N/A')  # Default if no image
+                })
+            else:
+                # Append only the score if user details are not found
+                final_results.append(user_score)
+
+        # Return the final results as JSON
+        return jsonify(final_results), 200
 
     except Exception as e:
+        app.logger.error(f"Error: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
 
@@ -448,6 +476,5 @@ if __name__ == '__main__':
 # local : 143.248.219.4
 # ec2 : 13.209.98.220
     
-
 
 
