@@ -167,7 +167,7 @@ pyparsing==3.1.1
 pypdf==3.16.2
 pypdfium2==4.20.0
 PyPika==0.48.9
-pytesseract==0.3.10 
+pytesseract==0.3.10
 python-dateutil==2.8.2
 python-docx==0.8.11
 python-dotenv==1.0.0
@@ -218,8 +218,8 @@ tinydb==4.3.0
 tokenizers==0.14.0
 toml==0.10.2
 toolz==0.12.0
-# torch==2.0.1
-vision==0.15.2
+torch==2.0.1
+torchvision==0.15.2
 tornado==6.3.3
 tqdm==4.66.1
 traitlets==5.10.0
