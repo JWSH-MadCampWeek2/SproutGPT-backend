@@ -3,6 +3,7 @@ from flask import Flask, render_template, request, jsonify, make_response
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
+import pymongo
 import requests
 from flask_pymongo import PyMongo
 from pymongo import MongoClient
@@ -152,42 +153,7 @@ def update_user_info():
 
 
 
-@app.route("/goal", methods=['POST'])
-def update_goal_info():
-    try:
-        # Extracting data from POST request
-        user_id = (str)(request.json['user_id'])
-        exercise_goal = request.json['exercise_goal']
-        difficulty = request.json['difficulty']
-        target = request.json['target']
-        
-        # Creating the document to insert into the database
-        goal_document = {
-            "exercise_goal": exercise_goal,
-            "difficulty": difficulty,
-            "target": target
-        }
-        
-        # Updating the document in the collection for the given user_id
-        # upsert=True will insert a new document if one does not exist
-        result = collection_Goal.update_one(
-            {"user_id": user_id},
-            {"$set": goal_document},
-            upsert=True
-        )
-        
-        # Check if a new document was inserted
-        if result.upserted_id is not None:
-            message = "New user goal created successfully"
-        else:
-            message = "User goal updated successfully"
-        
-        # Returning success message
-        return jsonify({"message": message}), 200
-    except Exception as e:
-        # Returning error message
-        return jsonify({"error": str(e)}), 500
-    
+
 
 @app.route("/recommend", methods=['POST'])
 def recommend():

@@ -19,15 +19,154 @@ db = client['MadCampWeek2']
 collection_User = db['User']
 
 
-data =  [
-      {
-        "name": "벤치 프레스",
-        "description": "바벨을 사용하여 가슴을 주로 단련하는 운동",
-        "difficulty": ["intermediate"],
-        "target": "가슴",
-        "link": "https://youtu.be/tRdBuUgOb5w?si=IYWNoMkRAwudf--E"
-      },
-    ]
+data = [
+
+{
+
+"user_id": "1234567891",
+
+"nickname": "이상혁",
+
+"profile_image": "http://k.kakaocdn.net/dn/1G9kp/btsAot8liOn/8CWudi3uy07rvFNUkk3ER0/img_640x640.jpg",
+
+"age": "28",
+
+"gender": "남자",
+
+"height": "173",
+
+"weight": "65",
+
+
+},
+{
+
+"user_id": "1234567892",
+
+"nickname": "최우제",
+
+"profile_image": "http://k.kakaocdn.net/dn/1G9kp/btsAot8liOn/8CWudi3uy07rvFNUkk3ER0/img_640x640.jpg",
+
+"age": "21",
+
+"gender": "남자",
+
+"height": "178",
+
+"weight": "73",
+
+
+},
+{
+
+"user_id": "1234567893",
+
+"nickname": "문현준",
+
+"profile_image": "http://k.kakaocdn.net/dn/1G9kp/btsAot8liOn/8CWudi3uy07rvFNUkk3ER0/img_640x640.jpg",
+
+"age": "23",
+
+"gender": "남자",
+
+"height": "180",
+
+"weight": "78",
+
+
+},
+{
+
+"user_id": "1234567894",
+
+"nickname": "이민형",
+
+"profile_image": "http://k.kakaocdn.net/dn/1G9kp/btsAot8liOn/8CWudi3uy07rvFNUkk3ER0/img_640x640.jpg",
+
+"age": "23",
+
+"gender": "남자",
+
+"height": "182",
+
+"weight": "85",
+
+
+},
+{
+
+"user_id": "1234567895",
+
+"nickname": "류민석",
+
+"profile_image": "http://k.kakaocdn.net/dn/1G9kp/btsAot8liOn/8CWudi3uy07rvFNUkk3ER0/img_640x640.jpg",
+
+"age": "23",
+
+"gender": "남자",
+
+"height": "168",
+
+"weight": "60",
+
+
+},
+{
+
+"user_id": "1234567896",
+
+"nickname": "하니",
+
+"profile_image": "http://k.kakaocdn.net/dn/1G9kp/btsAot8liOn/8CWudi3uy07rvFNUkk3ER0/img_640x640.jpg",
+
+"age": "20",
+
+"gender": "여자",
+
+"height": "162",
+
+"weight": "48",
+
+
+},
+{
+
+"user_id": "1234567897",
+
+"nickname": "민지",
+
+"profile_image": "http://k.kakaocdn.net/dn/1G9kp/btsAot8liOn/8CWudi3uy07rvFNUkk3ER0/img_640x640.jpg",
+
+"age": "20",
+
+"gender": "여자",
+
+"height": "169",
+
+"weight": "52",
+
+
+},
+{
+
+"user_id": "1234567898",
+
+"nickname": "해린",
+
+"profile_image": "http://k.kakaocdn.net/dn/1G9kp/btsAot8liOn/8CWudi3uy07rvFNUkk3ER0/img_640x640.jpg",
+
+"age": "28",
+
+"gender": "여자",
+
+"height": "165",
+
+"weight": "49",
+
+
+},
+
+]
 
 collection_User.insert_many(data)
 
