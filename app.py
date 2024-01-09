@@ -322,47 +322,41 @@ def calculate_score():
 
         # Retrieve the exercise sessions for the user and month
         user_record = collection_Grass.find_one(
-            {"user_id": user_id},
-            {"calendar": {"$elemMatch": {"date": year_month}}}
+            {"user_id": user_id, f"calendar.{year_month}.exercise_sessions": {"$exists": True}},
+            {f"calendar.{year_month}": 1}
         )
 
-        if not user_record or 'calendar' not in user_record or not user_record['calendar']:
+        if not user_record or 'calendar' not in user_record or year_month not in user_record['calendar']:
             return jsonify({'error': 'No exercise sessions found'}), 404
 
-        # The calendar with the matching date is in the first position of the array due to $elemMatch
-        exercise_sessions = user_record['calendar'][0]['exercise_sessions']
+        exercise_sessions = user_record['calendar'][year_month]['exercise_sessions']
         total_duration = sum(int(session['duration']) for session in exercise_sessions)
         score = total_duration * 3  # Base score
 
         # Check for consecutive days and apply multiplier
         consecutive_days = 1
         for i in range(1, len(exercise_sessions)):
-            current_day = int(exercise_sessions[i]['day'])
-            previous_day = int(exercise_sessions[i - 1]['day'])
-            if current_day == previous_day + 1:
+            if int(exercise_sessions[i]['day']) == int(exercise_sessions[i - 1]['day']) + 1:
                 consecutive_days += 1
             else:
                 score += (consecutive_days - 1) * total_duration * 3
                 consecutive_days = 1  # Reset counter for new block
         score += (consecutive_days - 1) * total_duration * 3  # Apply multiplier for the last block if any
 
-        # Update or add the score in collection_Score
-        score_record = collection_Score.find_one({"user_id": user_id})
-        if score_record:
-            # If the score record exists, update or add the new score in the calendar
-            updated = False
-            for entry in score_record['calendar']:
-                if entry['date'] == year_month:
-                    entry['score'] = score
-                    updated = True
-                    break
-            if not updated:
-                # If the date was not in the calendar, append it
-                score_record['calendar'].append({"date": year_month, "score": score})
-            collection_Score.update_one({"_id": score_record['_id']}, {"$set": {"calendar": score_record['calendar']}})
+        # Update the score in collection_Score
+        score_entry = collection_Score.find_one({"user_id": user_id})
+        if score_entry:
+            # Update the existing score record
+            collection_Score.update_one(
+                {"_id": score_entry['_id'], "calendar.date": year_month},
+                {"$set": {"calendar.$.score": score}},
+                upsert=True
+            )
         else:
-            # If there's no score record for the user, create it
-            collection_Score.insert_one({"user_id": user_id, "calendar": [{"date": year_month, "score": score}]})
+            # Insert a new score record if it doesn't exist
+            collection_Score.insert_one(
+                {"user_id": user_id, "calendar": [{"date": year_month, "score": score}]}
+            )
 
         return jsonify({'message': 'Score calculated and saved successfully', 'score': score}), 200
 
@@ -416,28 +410,29 @@ def get_rankings():
         if year is None or month is None:
             return jsonify({'error': 'Year and month are required'}), 400
 
-        # Prepare the query to match the date format
-        date_query = f"{year:04d}-{month:02d}"
+        # Prepare the date query to match the required format "YYYY-MM"
+        date_query = f"{year}-{month:02d}"  # Ensure month is two digits
 
-        # Fetch all user records for the given date range
-        all_records = collection_Grass.find({})
+        # Fetch all user score records for the given date range from collection_Score
+        all_score_records = collection_Score.find({})
 
-        # Prepare a dictionary to hold user scores
-        user_scores = {}
+        # Prepare a list to hold user scores along with user_id
+        user_scores = []
 
-        # Iterate over the records to calculate scores
-        for record in all_records:
+        # Iterate over the score records to find the score for the given month and year
+        for record in all_score_records:
             user_id = record.get('user_id')
-            # Initialize the user's score
-            user_scores[user_id] = 0
-            # Aggregate scores if the user has sessions for the given month and year
-            for session in record.get('exercise_sessions', []):
-                if session['date'].startswith(date_query):
-                    user_scores[user_id] += session.get('score', 0)
+            # Find the score for the specified month and year
+            for calendar_entry in record.get('calendar', []):
+                if calendar_entry.get('date') == date_query:
+                    user_scores.append({
+                        'user_id': user_id,
+                        'score': calendar_entry.get('score', 0)
+                    })
+                    break
 
-        # Sort the user_scores dictionary by score in descending order
-        sorted_scores = dict(sorted(user_scores.items(), key=lambda item: item[1], reverse=True))
-        print(sorted_scores)
+        # Sort the user scores list by score in descending order
+        sorted_scores = sorted(user_scores, key=lambda k: k['score'], reverse=True)
 
         # Return the sorted scores as JSON
         return jsonify(sorted_scores), 200
