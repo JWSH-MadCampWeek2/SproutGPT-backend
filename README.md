@@ -1,6 +1,6 @@
 # Sprout GPT
 
-![2.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/f6cb388f-3934-47d6-9928-26d2e10eb0fc/067f0828-0849-4c57-82b4-de735a04c247/2.png)
+![2](https://github.com/JWSH-MadCampWeek2/SproutGPT-backend/assets/79096116/27523cba-de70-4f80-b8b1-e8ff1e92b868)
 
 # Sprout GPT
 
@@ -124,3 +124,5 @@ Madcamp Week2 1분반
 ### 기술 설명
 
 - 사용자정보를 수정하면, 이를 DB에 반영하도록 구현했습니다.
+
+Frontend: https://github.com/JWSH-MadCampWeek2/SproutGPT-frontend.git
